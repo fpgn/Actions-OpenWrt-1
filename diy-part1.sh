@@ -17,4 +17,5 @@
 #sed -i '$a src-git lienol https://github.com/Lienol/openwrt-package' feeds.conf.default
 #git clone https://github.com/MrH723/openwrt-packages.git package/openwrt-packages
 echo 'src-git kenzo https://github.com/kenzok8/openwrt-packages.git' >> feeds.conf.default
-echo 'src-git small https://github.com/kenzok8/small.git # passwall 基本依赖' >> feeds.conf.default
+echo 'src-git small https://github.com/kenzok8/small.git ' >> feeds.conf.default
+
