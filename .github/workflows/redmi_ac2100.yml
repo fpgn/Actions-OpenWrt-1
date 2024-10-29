@@ -39,43 +39,52 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
 
     steps:
-    - name: Checkout
+    - name: 检查工作流
       uses: actions/checkout@main
 
-    - name: Initialization environment
+    - name: 初始化环境
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
-        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
         sudo -E apt-get -qq update
-        sudo -E apt-get -qq install $(curl -fsSL git.io/depends-ubuntu-1804)
-        sudo -E apt-get -qq autoremove --purge
-        sudo -E apt-get -qq clean
+        sudo -E apt-get -qq install ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
+        bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib \
+        git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libglib2.0-dev libgmp3-dev libltdl-dev \
+        libmpc-dev libmpfr-dev libip4tc2 libncurses5-dev libncursesw5-dev libreadline-dev libssl-dev libtool lrzsz \
+        mkisofs msmtp nano ninja-build p7zip p7zip-full patch pkgconf python2.7 python3 python3-pyelftools \
+        libpython3-dev qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip \
+        vim wget xmlto xxd zlib1g-dev python3-setuptools clang
+        sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+        sudo add-apt-repository ppa:ubuntu-toolchain-r/ppa
+        sudo apt-get install -y gcc-13
+        sudo apt-get install -y g++-13
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 60 --slave /usr/bin/g++ g++ /usr/bin/g++-13
         sudo timedatectl set-timezone "$TZ"
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
-    - name: Clone source code
+    - name: 拉取源码
       working-directory: /workdir
       run: |
         df -hT $PWD
         git clone $REPO_URL -b $REPO_BRANCH openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
-    - name: Load custom feeds
+    - name: 运行第一脚本
       run: |
         [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
         chmod +x $DIY_P1_SH
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P1_SH
-    - name: Update feeds
+    - name: 更新插件
       run: cd openwrt && ./scripts/feeds update -a
 
-    - name: Install feeds
+    - name: 安装插件
       run: cd openwrt && ./scripts/feeds install -a
 
-    - name: Load custom configuration
+    - name: 运行第二脚本
       run: |
         [ -e files ] && mv files openwrt/files
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
@@ -89,7 +98,7 @@ jobs:
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
 
-    - name: Download package
+    - name: 下载插件环境包
       id: package
       run: |
         cd openwrt
@@ -97,7 +106,7 @@ jobs:
         make download -j8
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
-    - name: Compile the firmware
+    - name: 编译固件中
       id: compile
       run: |
         cd openwrt
@@ -107,18 +116,18 @@ jobs:
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
         [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
-    - name: Check space usage
+    - name: 检查打包环境
       if: (!cancelled())
       run: df -hT
 
-    - name: Upload bin directory
+    - name: 检查打包环境
       uses: actions/upload-artifact@main
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
       with:
         name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: openwrt/bin
 
-    - name: Organize files
+    - name: Organize files更新文件
       id: organize
       if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
